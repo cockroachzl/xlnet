@@ -320,6 +320,46 @@ class ImdbProcessor(DataProcessor):
     return examples
 
 
+class Airbnb2ClsProcessor(GLUEProcessor):
+    def __init__(self):
+        super(Airbnb2ClsProcessor, self).__init__()
+        self.text_a_column = 1
+        self.label_column = 0
+        self.contains_header = False
+        self.test_text_a_column = 1
+        self.test_contains_header = False
+
+    def get_labels(self):
+        """See base class."""
+        return ["1", "2"]
+
+    @classmethod
+    def _read_tsv(cls, input_file, quotechar=None):
+        """Reads a tab separated value file."""
+        with tf.gfile.Open(input_file, "r") as f:
+            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+            lines = []
+            for line in reader:
+                lines.append(line)
+            return lines
+
+
+class Airbnb3ClsProcessor(Airbnb2ClsProcessor):
+    def __init__(self):
+        super(Airbnb3ClsProcessor, self).__init__()
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1", "2"]
+
+
+class SST2Processor(GLUEProcessor):
+    def __init__(self):
+        super(SST2Processor, self).__init__()
+        self.text_a_column = 0
+        self.label_column = 1
+
+
 class MnliMatchedProcessor(GLUEProcessor):
   def __init__(self):
     super(MnliMatchedProcessor, self).__init__()
@@ -541,10 +581,14 @@ def get_model_fn(n_class):
             'weights': is_real_example
         }
         accuracy = tf.metrics.accuracy(**eval_input_dict)
+        precision = tf.metrics.precision(**eval_input_dict)
+        recall = tf.metrics.recall(**eval_input_dict)
 
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
         return {
             'eval_accuracy': accuracy,
+            'eval_precision': precision,
+            'eval_recall': recall,
             'eval_loss': loss}
 
       def regression_metric_fn(
@@ -646,6 +690,9 @@ def main(_):
       tf.gfile.MakeDirs(predict_dir)
 
   processors = {
+      'airbnb-2cls': Airbnb2ClsProcessor,
+      'airbnb-3cls': Airbnb3ClsProcessor,
+      'sst-2': SST2Processor,
       "mnli_matched": MnliMatchedProcessor,
       "mnli_mismatched": MnliMismatchedProcessor,
       'sts-b': StsbProcessor,
